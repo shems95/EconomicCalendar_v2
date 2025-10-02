@@ -124,13 +124,11 @@ The included `Tester.mq5` demonstrates proper usage:
 - Day change detection and cache refresh
 - State tracking to avoid repeated notifications
 - Event window entry/exit handling
-- Clean output formatting
 
 ## Requirements
 
-- MetaTrader 5 Build 2361 or higher
-- For backtesting: Historical news data file (News.mqh format)
-- Active internet connection for live trading mode
+Backtesting: A historical news data file (News.mqh format) is required.
+To generate it, run the Tester EA in live mode. This process will collect and save all news events for all currencies into a file that can later be used during backtesting.
 
 ## File Structure
 

@@ -33,6 +33,12 @@ IEconomicCalendar (Interface)
 
 ## Usage
 
+To use news events in backtesting mode, you must first run the Tester EA in live mode and wait until it loads all the events.
+
+After that, you can use the EconomicCalendarBacktesting class for your own purposes.
+
+Whenever you need to update the news file, simply run the Tester EA again in live mode. It will automatically append all missing events from the last saved date up to the current date.
+
 ### Basic Implementation
 
 ```mql5
@@ -145,9 +151,6 @@ To generate it, run the Tester EA in live mode. This process will collect and sa
 ## Limitations
 
 - Backtesting requires pre-loaded historical data
-- Live mode depends on MT5's Calendar API availability
-- Cache refreshes at midnight (server time)
-- Maximum one day of events cached in memory
 
 ## License
 

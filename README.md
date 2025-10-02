@@ -44,9 +44,8 @@ IEconomicCalendar (Interface)
 ## Backtesting Setup
 
 ### Initial Data Collection
-1. Run the Tester EA in **live mode** with internet connection
-2. Wait for complete event loading (all currencies and timeframes)
-3. Historical data is automatically saved for backtesting use
+1. Run the Tester EA in **live mode**
+2. Wait for complete event loading (all currencies)
 
 ### Using in Backtesting
 After data collection, the `EconomicCalendarBacktesting` class provides the same interface as live trading but uses the pre-loaded historical data.
@@ -163,33 +162,11 @@ calendar.DebugPrintTodayNews(); // Shows all windows for current day
 
 ## Requirements & Important Notes
 
-### Backtesting Requirements
-A historical news data file is required for backtesting. Generate it by running the Tester EA in live mode, which collects and saves all news events.
-
 ### Server Time Considerations
 **Critical**: News events are saved with your broker's server time. When switching brokers:
 1. **Delete** the existing news data file
 2. **Regenerate** completely by running Tester EA in live mode
 3. This ensures accurate timing alignment with the new broker's server time
-
-### System Requirements
-- MetaTrader 5 (any recent build)
-- Internet connection for live mode data collection
-- Sufficient disk space for historical news data
-
-## File Structure
-
-```
-EconomicCalendar/
-├── IEconomicCalendar.mqh          # Interface definition
-├── EconomicCalendar.mqh           # Live trading implementation  
-├── EconomicCalendarBacktesting.mqh # Backtesting implementation
-├── Backtesting/
-│   ├── News.mqh                   # Historical data handler
-│   ├── Time.mqh                   # Time utilities
-│   └── Tester.mq5                 # Data collection & demo EA
-└── README.md                      # This documentation
-```
 
 ## Testing & Debugging
 
@@ -198,18 +175,8 @@ The included `Tester.mq5` EA demonstrates:
 - Day change handling
 - News window state tracking  
 - Event logging without repetition
-- Proper resource cleanup
 
 Run it to see the library in action and understand the output format.
-
-## Best Practices
-
-1. **Always** check return values from library methods
-2. **Initialize** in `OnInit()` for proper setup
-3. **Cleanup** resources in `OnDeinit()`
-4. **Use** appropriate importance levels for your strategy
-5. **Test** thoroughly in Strategy Tester before live trading
-6. **Regenerate** news data when changing brokers
 
 ## Limitations
 

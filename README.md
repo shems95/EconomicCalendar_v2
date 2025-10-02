@@ -1,28 +1,38 @@
 # MQL5 Economic Calendar Library
 
-A optimized library for managing economic news events in MetaTrader 5 Expert Advisors, with support for both live trading and backtesting environments.
+An optimized library for managing economic news events in MetaTrader 5 Expert Advisors, with support for both live trading and backtesting environments.
 
 ## Overview
 
-This library provides a unified interface for accessing and filtering economic calendar events in MT5, helping traders avoid or manage positions during high-impact news releases. It features intelligent caching, optimized performance, and seamless switching between live and backtesting modes.
+This library provides a unified interface for accessing and filtering economic calendar events in MT5, helping traders avoid or manage positions during high-impact news releases. The library creates protective time windows around each news event and intelligently merges overlapping windows for optimal performance.
 
-## Features
+## Key Features
 
-- **Dual Mode Support**: Automatically switches between live trading (`EconomicCalendar`) and backtesting (`EconomicCalendarBacktesting`) implementations
-- **Singleton Pattern**: Ensures single instance throughout the application lifecycle
-- **Smart Caching**: Daily event caching to minimize API calls and improve performance
-- **Flexible Filtering**: Configure importance levels (High/Medium/Low) and time windows around events
-- **Multi-Symbol Support**: Efficiently handles multiple currency pairs from Market Watch
-- **Optimized Performance**: Sub-millisecond response times through intelligent caching strategies
+- **Dual Mode Support**: Seamlessly switches between live trading and backtesting implementations
+- **Smart Time Windows**: Creates configurable protection periods around news events (e.g., 15 minutes before and after)
+- **Window Optimization**: Automatically merges overlapping news windows into single, longer periods
+- **Intelligent Caching**: Daily event caching with sub-millisecond response times
+- **Multi-Symbol Support**: Efficiently handles all Market Watch currency pairs
+- **Singleton Pattern**: Single instance throughout application lifecycle
+
+## How It Works
+
+The library creates protective time windows around each news event (configurable minutes before and after). When the `IsNewsTime()` method is called, it efficiently checks if the current time falls within any of these news windows.
+
+When multiple news events have overlapping time windows, the library intelligently merges them into a single, longer window, providing:
+
+- **Better Performance**: Fewer windows to check
+- **Simplified Logic**: One continuous restriction period instead of multiple short ones  
+- **Memory Efficiency**: Optimized data structures
 
 ## Architecture
 
 ### Core Components
 
-- **IEconomicCalendar** - Abstract interface defining the contract for all implementations
-- **EconomicCalendar** - Live trading implementation using MT5's native Calendar API
-- **EconomicCalendarBacktesting** - Backtesting implementation using pre-loaded historical data
-- **News** - Helper class for managing historical news data in backtesting mode
+- **IEconomicCalendar** - Abstract interface for all implementations
+- **EconomicCalendar** - Live trading implementation using MT5's Calendar API
+- **EconomicCalendarBacktesting** - Backtesting with pre-loaded historical data
+- **News** - Historical data management for backtesting
 
 ### Class Hierarchy
 ```
@@ -31,15 +41,20 @@ IEconomicCalendar (Interface)
     └── EconomicCalendarBacktesting (Strategy Tester)
 ```
 
-## Usage
+## Backtesting Setup
 
-To use news events in backtesting mode, you must first run the Tester EA in live mode and wait until it loads all the events.
+### Initial Data Collection
+1. Run the Tester EA in **live mode** with internet connection
+2. Wait for complete event loading (all currencies and timeframes)
+3. Historical data is automatically saved for backtesting use
 
-After that, you can use the EconomicCalendarBacktesting class for your own purposes.
+### Using in Backtesting
+After data collection, the `EconomicCalendarBacktesting` class provides the same interface as live trading but uses the pre-loaded historical data.
 
-Whenever you need to update the news file, simply run the Tester EA again in live mode. It will automatically append all missing events from the last saved date up to the current date.
+### Updating Data
+Simply run the Tester EA again in live mode - it automatically appends new events from the last saved date to current date.
 
-### Basic Implementation
+## Usage Example
 
 ```mql5
 #include "EconomicCalendar.mqh"
@@ -48,7 +63,7 @@ Whenever you need to update the news file, simply run the Tester EA again in liv
 IEconomicCalendar *calendar;
 
 int OnInit() {
-    // Automatic mode selection
+    // Automatic mode selection based on environment
     if(MQL_TESTER) {
         calendar = EconomicCalendarBacktesting::GetInstance(15, 15, true, false, false);
     } else {
@@ -61,96 +76,145 @@ void OnTick() {
     bool isNewsTime;
     if(calendar.IsNewsTime(_Symbol, isNewsTime)) {
         if(isNewsTime) {
-            // Handle news time - e.g., close positions, pause trading
-            Print("News event active for ", _Symbol);
+            // Handle news period - close positions, pause trading, etc.
+            Print("News protection active for ", _Symbol);
+            
+            // Optional: Get specific events in current window
+            MqlCalendarValue events[];
+            string eventNames[];
+            if(calendar.GetNewsInTimeWindow(_Symbol, events, eventNames)) {
+                for(int i = 0; i < ArraySize(events); i++) {
+                    Print("Active: ", eventNames[i], " at ", TimeToString(events[i].time));
+                }
+            }
         }
+    }
+}
+
+void OnDeinit(const int reason) {
+    // Clean up resources
+    if(MQL_TESTER) {
+        EconomicCalendarBacktesting::ReleaseInstance();
+    } else {
+        EconomicCalendar::DestroyInstance();
     }
 }
 ```
 
-### Configuration Parameters
+## Configuration
 
-- **minuteBeforeNews**: Minutes before event to start the protection window (default: 15)
-- **minuteAfterNews**: Minutes after event to end the protection window (default: 15)
+### Parameters
+- **minuteBeforeNews**: Protection window start (minutes before event, default: 15)
+- **minuteAfterNews**: Protection window end (minutes after event, default: 15)  
 - **checkHighImpact**: Include high importance events (default: true)
 - **checkMediumImpact**: Include medium importance events (default: false)
 - **checkLowImpact**: Include low importance events (default: false)
 
-## Key Methods
+### Runtime Updates
+```mql5
+// Update parameters dynamically
+calendar.UpdateParameters(30, 30, true, true, false); // 30min before/after, high+medium impact
+```
+
+## Core Methods
 
 ### IsNewsTime()
-Checks if current time falls within a news event window for the specified symbol.
+Primary method to check if trading should be restricted.
 
 ```mql5
 bool isNewsTime;
 if(calendar.IsNewsTime("EURUSD", isNewsTime)) {
     if(isNewsTime) {
-        // Trading restricted due to news
+        // News protection active
     }
 }
 ```
 
 ### GetNewsInTimeWindow()
-Retrieves all events within the current time window for a symbol.
+Get detailed information about active news events.
 
 ```mql5
 MqlCalendarValue events[];
 string eventNames[];
 if(calendar.GetNewsInTimeWindow("GBPUSD", events, eventNames)) {
-    for(int i = 0; i < ArraySize(events); i++) {
-        Print(eventNames[i], " at ", TimeToString(events[i].time));
-    }
+    // Process active events
 }
 ```
 
 ### DebugPrintTodayNews()
-Prints all windows scheduled for the current day (debugging).
+Development and debugging helper.
 
 ```mql5
-calendar.DebugPrintTodayNews();
+calendar.DebugPrintTodayNews(); // Shows all windows for current day
 ```
 
-### EconomicCalendar (Live)
+## Performance Features
 
+### Live Trading Optimizations
 - **Daily Cache**: Events loaded once per day per currency
-- **Smart Filtering**: Events filtered by importance at retrieval
-- **Automatic Cache Cleanup**: Removes outdated entries automatically
+- **Smart Filtering**: Importance filtering at API level
+- **Auto Cleanup**: Outdated cache entries removed automatically
 
-### EconomicCalendarBacktesting
+### Backtesting Optimizations  
+- **Pre-computed Windows**: All daily windows calculated at day start
+- **Window Merging**: Overlapping events merged for efficiency
+- **O(1) Lookups**: Same-second queries use cached results
+- **Batch Processing**: All Market Watch symbols processed together
 
-- **Pre-computed Windows**: News windows calculated once at day start
-- **Window Merging**: Overlapping events merged into single windows
-- **O(1) Lookups**: Same-second queries return cached results instantly
-- **Optimized Symbol Handling**: All Market Watch symbols processed in batch
+## Requirements & Important Notes
 
-## Testing
+### Backtesting Requirements
+A historical news data file is required for backtesting. Generate it by running the Tester EA in live mode, which collects and saves all news events.
 
-The included `Tester.mq5` demonstrates proper usage:
+### Server Time Considerations
+**Critical**: News events are saved with your broker's server time. When switching brokers:
+1. **Delete** the existing news data file
+2. **Regenerate** completely by running Tester EA in live mode
+3. This ensures accurate timing alignment with the new broker's server time
 
-- Day change detection and cache refresh
-- State tracking to avoid repeated notifications
-- Event window entry/exit handling
-
-## Requirements
-
-Backtesting: A historical news data file (News.mqh format) is required.
-To generate it, run the Tester EA in live mode. This process will collect and save all news events for all currencies into a file that can later be used during backtesting.
+### System Requirements
+- MetaTrader 5 (any recent build)
+- Internet connection for live mode data collection
+- Sufficient disk space for historical news data
 
 ## File Structure
 
 ```
+EconomicCalendar/
 ├── IEconomicCalendar.mqh          # Interface definition
-├── EconomicCalendar.mqh           # Live implementation
-├── EconomicCalendarBacktesting.mqh # Backtest implementation
+├── EconomicCalendar.mqh           # Live trading implementation  
+├── EconomicCalendarBacktesting.mqh # Backtesting implementation
 ├── Backtesting/
-│   └── News.mqh                   # Historical data handler
-└── Tester.mq5                     # Usage example
+│   ├── News.mqh                   # Historical data handler
+│   ├── Time.mqh                   # Time utilities
+│   └── Tester.mq5                 # Data collection & demo EA
+└── README.md                      # This documentation
 ```
 
+## Testing & Debugging
+
+The included `Tester.mq5` EA demonstrates:
+- Automatic mode detection
+- Day change handling
+- News window state tracking  
+- Event logging without repetition
+- Proper resource cleanup
+
+Run it to see the library in action and understand the output format.
+
+## Best Practices
+
+1. **Always** check return values from library methods
+2. **Initialize** in `OnInit()` for proper setup
+3. **Cleanup** resources in `OnDeinit()`
+4. **Use** appropriate importance levels for your strategy
+5. **Test** thoroughly in Strategy Tester before live trading
+6. **Regenerate** news data when changing brokers
 
 ## Limitations
 
 - Backtesting requires pre-loaded historical data
+- News timestamps are broker-specific (server time)
 
 ## License
 

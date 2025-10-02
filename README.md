@@ -1,6 +1,6 @@
 # MQL5 Economic Calendar Library
 
-A robust and optimized library for managing economic news events in MetaTrader 5 Expert Advisors, with support for both live trading and backtesting environments.
+A optimized library for managing economic news events in MetaTrader 5 Expert Advisors, with support for both live trading and backtesting environments.
 
 ## Overview
 
